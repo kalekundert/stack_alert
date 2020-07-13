@@ -31,7 +31,7 @@ Install stack_alert using ``pip``::
 
 Usage
 =====
-Specify which questions you want to receive alerts for:
+Specify which questions you want to receive alerts for::
 
   $ vi ~/.config/stack_alert/config.toml
   [[query]]
@@ -40,7 +40,7 @@ Specify which questions you want to receive alerts for:
   keywords = 'doo-?dads'  # regular expression
   recipient = 'alice@example.com'
   
-Configure `cron` to call `stack_alert` at 5:00 PM every day:
+Configure `cron` to call `stack_alert` at 5:00 PM every day::
 
   $ crontab -e
   0 17 * * * stack_alert
