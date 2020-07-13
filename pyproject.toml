@@ -10,13 +10,15 @@ home-page = 'https://github.com/kalekundert/stack_alert'
 description-file = 'README.rst'
 requires-python = "~=3.6"
 requires = [
+  'appdirs',
+  'docopt',
+  'excerpt-html',
+  'inform',
+  'jinja2',
+  'more_itertools',
   'requests',
   'toml',
-  'appdirs',
-  'more_itertools',
   'tqdm',
-  'inform',
-  'docopt',
 ]
 classifiers = [
   'Programming Language :: Python :: 3',
@@ -36,7 +38,7 @@ docs = [
 ]
 
 [tool.flit.scripts]
-stack_alert = "stack_alert:main"
+stack_alert = "stack_alert.cli:main"
 
 [tool.flit.metadata.urls]
 'Documentation' = 'https://stack_alert.readthedocs.io/en/latest/'

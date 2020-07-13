@@ -22,6 +22,8 @@ import requests
 import toml
 import logging
 import appdirs
+import jinja2
+import gettext
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -30,8 +32,9 @@ from more_itertools import flatten
 from tqdm import tqdm
 from inform import plural
 from math import floor, ceil
-
-__version__ = '0.0.0'
+from excerpt_html import excerpt_html
+from socket import gethostname
+from subprocess import run
 
 DIRS = appdirs.AppDirs('stack_alert')
 LOGGER = logging.getLogger('stack_alert')
@@ -48,8 +51,19 @@ critical = LOGGER.critical
 #   Exchange sites.  Each dictionary represents a single question and has the 
 #   following keys:
 #
-#   site (str):
-#   matching_queries (list):
+#   Returned by Stack Exchange API:
+#       link (str):
+#       title (str)
+#       body (str):
+#       tags (list):
+#       creation_date (epoch time):
+#
+#   Added by `_download_questions()`:
+#       site (str):
+#       matching_queries (list):
+#
+#   Added by `_pick_excerpts()`:
+#       excerpt (str):
 #
 # queries:
 #   List of dictionaries containing parameters to identify questions that the 
@@ -68,16 +82,6 @@ critical = LOGGER.critical
 #
 # hits:
 #   Those questions that match a query.
-
-def main():
-    logging.basicConfig(level=logging.INFO)
-
-    import docopt
-    args = docopt.docopt(__doc__)
-    notify(
-            download=not args['--no-download'],
-            notify=not args['--no-notify'],
-    )
 
 def notify(*, download=True, notify=True):
     queries = _load_queries()
@@ -109,8 +113,9 @@ def notify(*, download=True, notify=True):
     info(f"found {plural(hits):# question/s} matching queries")
 
     if notify:
+        _notify_recipients(hits)
+    else:
         info("skipping notification step")
-        _notify_user(hits)
 
 
 def _load_queries(dirs=DIRS):
@@ -274,7 +279,7 @@ def _eval_site(query, question):
     return question['site'] in query['sites']
             
 def _eval_tags(query, question):
-    return query['tags'].intersection(question['tags']) or not query['tags']
+    return all(x in question['tags'] for x in query['tags'])
 
 def _eval_keywords(query, question):
     patterns = query['keywords']
@@ -295,16 +300,80 @@ def _get_config_path(dirs=DIRS):
 def _get_cache_path(dirs=DIRS):
     return Path(dirs.user_cache_dir) / 'questions.json'
 
+def _notify_recipients(questions):
+    _pick_excerpts(questions)
 
-def _notify_user(questions):
-    title = 'New questions posted on Stack Exchange'
-    body = _format_email(questions)
+    for recipient in _find_recipients(questions):
+        hits = _filter_questions_by_recipient(questions, recipient)
+        message = _format_email(recipient, hits)
+        _send_email(message)
+
+def _pick_excerpts(questions):
+    for question in questions:
+        question['excerpt'] = _pick_excerpt(question)
 
 def _pick_excerpt(question):
-    pass
+    # This just takes the first few sentences of the question body.  A smarter 
+    # approach would center the excerpt around any matched keywords (and 
+    # highlight the keywords).
+    #
+    # I have also noticed cases where <code> blocks get included and end up 
+    # distorting the spacing in the email.  This might also be something to 
+    # avoid.
+    body = question['body']
+    return excerpt_html(body, min_words=35, cut_mark=None) or body
 
-def _format_email(questions):
-    pass
+def _format_email(recipient, questions):
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email.utils import formatdate
+
+    env = jinja2.Environment(
+        loader=jinja2.PackageLoader('stack_alert'),
+        autoescape=False,
+        extensions=[
+            'jinja2.ext.i18n',
+        ],
+    )
+    template = env.get_template('email_template.html.jinja')
+    html = template.render(
+            recipient=recipient,
+            questions=questions,
+            host=gethostname(),
+            datetime=datetime,
+            gettext=gettext.gettext,
+            ngettext=gettext.ngettext,
+    )
+
+    message = MIMEMultipart('alternative')
+    message['Subject'] = "Hello"
+    message['To'] = recipient
+    message['Date'] = formatdate(localtime=True)
+    message.attach(MIMEText(html, 'html'))
+
+    return message.as_string()
+
+def _send_email(message):
+    sendmail = 'sendmail', '-t'
+    run(sendmail, stdin=message)
+
+def _find_recipients(questions):
+    return set(flatten(
+        query['recipients']
+        for question in questions
+        for query in question['matching_queries']
+    ))
+
+def _filter_questions_by_recipient(questions, recipient):
+    return [
+            question
+            for question in questions
+            if any(
+                recipient in query['recipients']
+                for query in question['matching_queries']
+            )
+    ]
+
 
 class ConfigError(Exception):
     pass

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import pytest, os
-import stack_alert
+import stack_alert.api
 
 from stack_alert import *
 from textwrap import dedent
@@ -247,7 +247,7 @@ def tmp_appdir(tmp_path):
 )
 def test_load_queries(tmp_appdir, params):
     _write_config(tmp_appdir, params['toml'])
-    assert stack_alert._load_queries(tmp_appdir) == params['expected']
+    assert stack_alert.api._load_queries(tmp_appdir) == params['expected']
 
 @pytest.mark.parametrize(
         'params', [
@@ -277,30 +277,30 @@ def test_load_queries(tmp_appdir, params):
 def test_load_queries_err(tmp_appdir, params):
     _write_config(tmp_appdir, params['toml'])
     with pytest.raises(ConfigError, match=params['err']):
-        stack_alert._load_queries(tmp_appdir)
+        stack_alert.api._load_queries(tmp_appdir)
 
 def test_load_queries_err_not_found(tmp_appdir):
     with pytest.raises(ConfigError, match="file not found"):
-        stack_alert._load_queries(tmp_appdir)
+        stack_alert.api._load_queries(tmp_appdir)
 
 def test_load_cached_questions_1(tmp_appdir):
-    assert stack_alert._load_cached_questions(tmp_appdir) == []
+    assert stack_alert.api._load_cached_questions(tmp_appdir) == []
 
 def test_load_cached_questions_2(tmp_appdir):
     cache = [
             dict(question_id=1),
     ]
     _write_cache(tmp_appdir, cache)
-    assert stack_alert._load_cached_questions(tmp_appdir) == cache
+    assert stack_alert.api._load_cached_questions(tmp_appdir) == cache
 
 def test_update_cached_questions_1(tmp_appdir):
     cache = [
             dict(question_id=1),
     ]
     _write_cache(tmp_appdir, cache)
-    stack_alert._update_cached_questions([])
+    stack_alert.api._update_cached_questions([])
 
-    assert stack_alert._load_cached_questions(tmp_appdir) == cache
+    assert stack_alert.api._load_cached_questions(tmp_appdir) == cache
 
 @pytest.mark.parametrize(
         'params', [
@@ -318,8 +318,8 @@ def test_update_cached_questions_1(tmp_appdir):
 )
 def test_update_cached_questions_1(tmp_appdir, params):
     _write_cache(tmp_appdir, params['old_cache'])
-    stack_alert._update_cached_questions(params['new_cache'], tmp_appdir)
-    assert stack_alert._load_cached_questions(tmp_appdir) == params['expected']
+    stack_alert.api._update_cached_questions(params['new_cache'], tmp_appdir)
+    assert stack_alert.api._load_cached_questions(tmp_appdir) == params['expected']
 
 @pytest.mark.parametrize(
         'params', [
@@ -394,7 +394,7 @@ def test_update_cached_questions_1(tmp_appdir, params):
 )
 def test_pick_date_range(monkeypatch, params):
     _mock_datetime_now(monkeypatch, params['now'])
-    dates = stack_alert._pick_date_range(params['site'], params['cache'])
+    dates = stack_alert.api._pick_date_range(params['site'], params['cache'])
     assert dates == (
             params['last_date'].timestamp(),
             params['curr_date'].timestamp(),
@@ -443,7 +443,7 @@ def test_pick_date_range(monkeypatch, params):
         ]
 )
 def test_prune_stale_questions(params):
-    questions = stack_alert._prune_stale_questions(
+    questions = stack_alert.api._prune_stale_questions(
             params['questions'],
             params['cache'],
     )
@@ -546,6 +546,38 @@ def test_prune_stale_questions(params):
                 expected=False,
             ),
 
+            # Multiple tags:
+            dict(
+                query=dict(
+                    sites={'stackoverflow'},
+                    tags={'python', 'numpy'},
+                    keywords=set(),
+                ),
+                question=dict(
+                    site='stackoverflow',
+                    title="Problem with python",
+                    body="Here is a problem...",
+                    tags=['python', 'numpy'],
+                ),
+                expected=True,
+            ),
+
+            dict(
+                query=dict(
+                    sites={'stackoverflow'},
+                    tags={'python', 'numpy'},
+                    keywords=set(),
+                ),
+                question=dict(
+                    site='stackoverflow',
+                    title="Problem with python",
+                    body="Here is a problem...",
+                    tags=['python'],
+                ),
+                expected=False,
+            ),
+
+
             # Mismatches:
             dict(
                 query=dict(
@@ -594,17 +626,288 @@ def test_prune_stale_questions(params):
         ]
 )
 def test_eval_query(params):
-    is_match = stack_alert._eval_query(params['query'], params['question'])
+    is_match = stack_alert.api._eval_query(params['query'], params['question'])
     assert is_match == params['expected']
+
+@pytest.mark.parametrize(
+        'params', [
+            dict(
+                questions=[],
+                recipients=set(),
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        matching_queries=[
+                            dict(
+                                recipients=['alice@example.com'],
+                            ),
+                        ],
+                    ),
+                ],
+                recipients={'alice@example.com'},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipients={'alice@example.com', 'bob@example.com'},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                ],
+                            ),
+                            dict(
+                                recipients=[
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipients={'alice@example.com', 'bob@example.com'},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                    dict(
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipients={'alice@example.com', 'bob@example.com'},
+            ),
+        ]
+)
+def test_find_recipients(params):
+    assert stack_alert.api._find_recipients(params['questions']) == \
+            params['recipients']
+
+@pytest.mark.parametrize(
+        'params', [
+
+            # 0 questions:
+            dict(
+                questions=[],
+                recipient='alice@example.com',
+                expected=set(),
+            ),
+
+            # 1 question, 1 query, 1 recipient:
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=['alice@example.com'],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='alice@example.com',
+                expected={1},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=['alice@example.com'],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='bob@example.com',
+                expected=set(),
+            ),
+
+            # 1 question, 1 query, 2 recipients
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='alice@example.com',
+                expected={1},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='bob@example.com',
+                expected={1},
+            ),
+
+            # 1 question, 2 queries, 1 recipient each
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                ],
+                            ),
+                            dict(
+                                recipients=[
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='alice@example.com',
+                expected={1},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                ],
+                            ),
+                            dict(
+                                recipients=[
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='bob@example.com',
+                expected={1},
+            ),
+
+            # 2 questions, 1 query each, 1 recipient each
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                    dict(
+                        question_id=2,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='alice@example.com',
+                expected={1},
+            ),
+
+            dict(
+                questions=[
+                    dict(
+                        question_id=1,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'alice@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                    dict(
+                        question_id=2,
+                        matching_queries=[
+                            dict(
+                                recipients=[
+                                    'bob@example.com',
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+                recipient='bob@example.com',
+                expected={2},
+            ),
+        ]
+)
+def test_filter_questions_by_recipient(params):
+    qs = stack_alert.api._filter_questions_by_recipient(
+            params['questions'],
+            params['recipient'],
+    )
+    assert {q['question_id'] for q in qs} == params['expected']
 
 
 def _write_config(tmp_appdir, toml):
-    config_path = stack_alert._get_config_path(tmp_appdir)
+    config_path = stack_alert.api._get_config_path(tmp_appdir)
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(dedent(toml))
 
 def _write_cache(tmp_appdir, cache):
-    config_path = stack_alert._get_cache_path(tmp_appdir)
+    config_path = stack_alert.api._get_cache_path(tmp_appdir)
     config_path.parent.mkdir(parents=True, exist_ok=True)
     with config_path.open('w') as f:
         json.dump(cache, f)
@@ -617,5 +920,5 @@ def _mock_datetime_now(monkeypatch, value):
         def now(cls):
             return value
 
-    monkeypatch.setattr('stack_alert.datetime', mock_datetime)
+    monkeypatch.setattr('stack_alert.api.datetime', mock_datetime)
 
