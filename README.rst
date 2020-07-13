@@ -2,6 +2,12 @@
 Stack Alert
 ***********
 
+Stack Alert is a program to notify you a question matching certain filters is 
+asked on a Stack Exchange site.  Stack Exchange has a feature that allows you 
+to be notified when questions matching certain tags are asked, but this is 
+often so broad as to be useless.  Stack Alert instead allows you to filter 
+using regular expressions against the title and body of the question.
+
 .. image:: https://img.shields.io/pypi/v/stack_alert.svg
    :target: https://pypi.python.org/pypi/stack_alert
 
@@ -25,4 +31,17 @@ Install stack_alert using ``pip``::
 
 Usage
 =====
-Coming soon...
+Specify which questions you want to receive alerts for:
+
+  $ vi ~/.config/stack_alert/config.toml
+  [[query]]
+  site = 'stackoverflow'
+  tag = 'python'
+  keywords = 'doo-?dads'  # regular expression
+  recipient = 'alice@example.com'
+  
+Configure `cron` to call `stack_alert` at 5:00 PM every day:
+
+  $ crontab -e
+  0 17 * * * stack_alert
+
