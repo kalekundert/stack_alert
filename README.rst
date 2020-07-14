@@ -25,7 +25,7 @@ using regular expressions against the title and body of the question.
 
 Getting Started
 ===============
-Install stack_alert using ``pip``::
+Install `stack_alert` using ``pip``::
 
     $ pip install stack_alert
 
