@@ -23,25 +23,27 @@ using regular expressions against the title and body of the question.
 .. image:: https://img.shields.io/coveralls/kalekundert/stack_alert.svg
    :target: https://coveralls.io/github/kalekundert/stack_alert?branch=master
 
-Installation
-============
+Getting Started
+===============
 Install stack_alert using ``pip``::
 
     $ pip install stack_alert
 
-Usage
-=====
-Specify which questions you want to receive alerts for:
+Specify which questions you want to receive alerts for::
 
   $ vi ~/.config/stack_alert/config.toml
   [[query]]
   site = 'stackoverflow'
   tag = 'python'
-  keywords = 'doo-?dads'  # regular expression
+  keywords = '(num|sci)py'  # regular expression
   recipient = 'alice@example.com'
   
-Configure `cron` to call `stack_alert` at 5:00 PM every day:
+Configure `cron` to call `stack_alert` at 5:00 PM every day::
 
   $ crontab -e
   0 17 * * * stack_alert
+  
+Log messages are written to stderr.  I recommend using `ts <http://joeyh.name/code/moreutils/>`__ and `tinylog <http://b0llix.net/perp/site.cgi?page=tinylog.8>`__ to collect and rotate these messages::
 
+  $ crontab -e
+  0 17 * * * stack_alert 2>&1 | ts | tinylog /path/to/log/dir
