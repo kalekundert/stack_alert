@@ -25,7 +25,7 @@ using regular expressions against the title and body of the question.
 
 Getting Started
 ===============
-Install `stack_alert` using ``pip``::
+Install ``stack_alert`` using ``pip``::
 
     $ pip install stack_alert
 
@@ -38,7 +38,7 @@ Specify which questions you want to receive alerts for::
   keywords = '(num|sci)py'  # regular expression
   recipient = 'alice@example.com'
   
-Configure `cron` to call `stack_alert` at 5:00 PM every day::
+Configure `cron` to call ``stack_alert`` at 5:00 PM every day::
 
   $ crontab -e
   0 17 * * * stack_alert
