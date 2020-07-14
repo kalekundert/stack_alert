@@ -113,7 +113,7 @@ def notify(*, download=True, notify=True):
     info(f"found {plural(hits):# question/s} matching queries")
 
     if notify:
-        _notify_recipients(hits)
+        _notify_recipients(queries, hits)
     else:
         info("skipping notification step")
 
@@ -300,13 +300,13 @@ def _get_config_path(dirs=DIRS):
 def _get_cache_path(dirs=DIRS):
     return Path(dirs.user_cache_dir) / 'questions.json'
 
-def _notify_recipients(questions):
+def _notify_recipients(queries, questions):
+    recipients = set(flatten(x['recipients'] for x in queries))
     _pick_excerpts(questions)
 
-    for recipient in _find_recipients(questions):
-        hits = _filter_questions_by_recipient(questions, recipient)
-        message = _format_email(recipient, hits)
-        _send_email(message)
+    for recipient in recipients:
+        qs = _filter_questions_by_recipient(questions, recipient)
+        _send_email(recipient, qs)
 
 def _pick_excerpts(questions):
     for question in questions:
@@ -323,7 +323,7 @@ def _pick_excerpt(question):
     body = question['body']
     return excerpt_html(body, min_words=35, cut_mark=None) or body
 
-def _format_email(recipient, questions):
+def _send_email(recipient, questions):
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
     from email.utils import formatdate
@@ -346,23 +346,14 @@ def _format_email(recipient, questions):
     )
 
     message = MIMEMultipart('alternative')
-    message['Subject'] = "Hello"
+    message['Subject'] = "New questions posted on Stack Exchange"
     message['To'] = recipient
     message['Date'] = formatdate(localtime=True)
     message.attach(MIMEText(html, 'html'))
 
-    return message.as_string()
-
-def _send_email(message):
     sendmail = 'sendmail', '-t'
-    run(sendmail, stdin=message)
-
-def _find_recipients(questions):
-    return set(flatten(
-        query['recipients']
-        for question in questions
-        for query in question['matching_queries']
-    ))
+    run(sendmail, input=message.as_string(), text=True)
+    info(f"sent email to {recipient}")
 
 def _filter_questions_by_recipient(questions, recipient):
     return [

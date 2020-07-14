@@ -1,8 +1,5 @@
-To: {{recipient}}
-Subject: New questions posted on Stack Exchange
-Content-Type: text/html
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" 
+"http://www.w3.org/TR/html4/strict.dtd">
 
 <html>
 <head>
@@ -178,11 +175,14 @@ Content-Type: text/html
             </td>
             <td align="left" valign="middle" style="padding: 15px 0; color: white; text-align: left;">
                 <p class="header-text" style="margin-bottom: 0;">
-                {% trans n=questions|length %}
-                The following question matches your search criteria.
-                {% pluralize %}
-                The following {{ n }} questions match your search criteria.
-                {% endtrans %}
+                {% set n=questions|length %}
+                {% if n == 0 %}
+                  No new questions matched your search criteria.
+                {% elif n == 1 %}
+                  The following new question matches your search criteria.
+                {% else %}
+                  The following {{ n }} new questions match your search criteria.
+                {% endif %}
                 </p>
             </td>
         </tr>
