@@ -346,7 +346,10 @@ def _send_email(recipient, questions):
     )
 
     message = MIMEMultipart('alternative')
-    message['Subject'] = "New questions posted on Stack Exchange"
+    if questions:
+        message['Subject'] = "New questions posted on Stack Exchange"
+    else:
+        message['Subject'] = "No new questions posted on Stack Exchange"
     message['To'] = recipient
     message['Date'] = formatdate(localtime=True)
     message.attach(MIMEText(html, 'html'))
