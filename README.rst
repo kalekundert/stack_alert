@@ -2,9 +2,9 @@
 Stack Alert
 ***********
 
-Stack Alert is a program to notify you a question matching certain filters is 
-asked on a Stack Exchange site.  Stack Exchange has a feature that allows you 
-to be notified when questions matching certain tags are asked, but this is 
+Stack Alert is a program to notify you when a question matching certain filters 
+is asked on a Stack Exchange site.  Stack Exchange has a feature that allows 
+you to be notified when questions matching certain tags are asked, but this is 
 often so broad as to be useless.  Stack Alert instead allows you to filter 
 using regular expressions against the title and body of the question.
 
@@ -43,7 +43,10 @@ Configure `cron` to call `stack_alert` at 5:00 PM every day::
   $ crontab -e
   0 17 * * * stack_alert
   
-Log messages are written to stderr.  I recommend using `ts <http://joeyh.name/code/moreutils/>`__ and `tinylog <http://b0llix.net/perp/site.cgi?page=tinylog.8>`__ to collect and rotate these messages::
+Log messages are written to stderr.  I recommend using `ts 
+<http://joeyh.name/code/moreutils/>`__ and `tinylog 
+<http://b0llix.net/perp/site.cgi?page=tinylog.8>`__ to collect and rotate these 
+messages::
 
   $ crontab -e
   0 17 * * * stack_alert 2>&1 | ts | tinylog /path/to/log/dir
