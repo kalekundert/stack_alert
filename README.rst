@@ -44,7 +44,7 @@ Configure `cron` to call ``stack_alert`` at 5:00 PM every day.  Log messages
 are written to stderr.  I recommend using `ts 
 <http://joeyh.name/code/moreutils/>`__ and `tinylog 
 <http://b0llix.net/perp/site.cgi?page=tinylog.8>`__ to collect and rotate these 
-messages.
+messages::
 
   $ which sendmail
   /usr/sbin/sendmail
