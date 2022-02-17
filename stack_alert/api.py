@@ -235,7 +235,7 @@ def _download_questions(site, dates):
             break
 
         if not wrapper['quota_remaining']:
-            warning(f"reached daily quota of {wrapper['quote_max']} Stack Exchange API requests; some questions may not have been downloaded")
+            warning(f"reached daily quota of {wrapper['quota_max']} Stack Exchange API requests; some questions may not have been downloaded")
             break
 
         # Sleep for long enough to not get throttled.  There is a 30 request/sec 
