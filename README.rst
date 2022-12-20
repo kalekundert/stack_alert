@@ -17,7 +17,7 @@ using regular expressions against the title and body of the question.
 .. image:: https://img.shields.io/readthedocs/stack_alert.svg
    :target: https://stack_alert.readthedocs.io/en/latest/?badge=latest
 
-.. image:: https://img.shields.io/github/workflow/status/kalekundert/stack_alert/Test%20and%20release/master
+.. image:: https://img.shields.io/github/actions/workflow/status/kalekundert/stack_alert/test_and_release.yml?branch=master
    :target: https://github.com/kalekundert/stack_alert/actions
 
 .. image:: https://img.shields.io/coveralls/kalekundert/stack_alert.svg
